@@ -85,13 +85,13 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Đăng nhập ghcr.io
-        # token tự sinh cho mỗi lần chạy, chỉ đủ quyền đọc/ghi package của repo này
-        env:
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GHCR_USER: ${{ github.actor }}
-        run: |
-          $env:GHCR_TOKEN | docker login ghcr.io -u $env:GHCR_USER --password-stdin
-          if ($LASTEXITCODE -ne 0) { exit 1 }
+        # token tự sinh cho mỗi lần chạy, chỉ đủ quyền đọc/ghi package của repo này.
+        # Dùng action thay vì "token | docker login": Windows PowerShell 5.1 thêm \r\n vào chuỗi chuyển qua dấu |
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Kéo image mới
         run: |
