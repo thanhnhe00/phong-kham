@@ -1,0 +1,76 @@
+{
+  "env": {
+    "cpu": "Intel(R) Xeon(R) CPU E3-1220 v3 @ 3.10GHz",
+    "cores": 4,
+    "ramGB": 17,
+    "os": "Windows_NT 10.0.19045",
+    "node": "v24.22.1",
+    "at": "2026-11-15T16:39:28.507Z"
+  },
+  "rows": [
+    {
+      "name": "Khách xem chuyên khoa, bác sĩ, giờ trống (không đăng nhập)",
+      "users": 50,
+      "seconds": 20,
+      "requests": 8397,
+      "rps": 417,
+      "avg": 120,
+      "p50": 95,
+      "p95": 277,
+      "p99": 444,
+      "max": 1420,
+      "errors": 0,
+      "errorRate": 0
+    },
+    {
+      "name": "App bệnh nhân hỏi lại số thứ tự, lịch hẹn, thông báo",
+      "users": 100,
+      "seconds": 20,
+      "requests": 8802,
+      "rps": 437,
+      "avg": 228,
+      "p50": 194,
+      "p95": 584,
+      "p99": 803,
+      "max": 1422,
+      "errors": 0,
+      "errorRate": 0
+    },
+    {
+      "name": "Web lễ tân: hàng đợi, lịch chờ xác nhận, hóa đơn chưa thu",
+      "users": 30,
+      "seconds": 20,
+      "requests": 5385,
+      "rps": 268,
+      "avg": 112,
+      "p50": 101,
+      "p95": 229,
+      "p99": 302,
+      "max": 429,
+      "errors": 0,
+      "errorRate": 0
+    },
+    {
+      "name": "Đăng nhập (băm mật khẩu BCrypt, cố ý chậm để chống dò mật khẩu)",
+      "users": 10,
+      "seconds": 15,
+      "requests": 284,
+      "rps": 19,
+      "avg": 436,
+      "p50": 402,
+      "p95": 686,
+      "p99": 1036,
+      "max": 4008,
+      "errors": 0,
+      "errorRate": 0
+    }
+  ],
+  "race": {
+    "users": 20,
+    "slot": "2026-11-27T09:30:00Z",
+    "success": 1,
+    "conflict": 19,
+    "other": 0,
+    "ms": 132
+  }
+}

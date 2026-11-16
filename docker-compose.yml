@@ -1,0 +1,47 @@
+# Chạy: cp .env.example .env && docker compose up -d --build
+# Backend: http://localhost:8080/api/actuator/health
+name: he-thong-phong-kham
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432" # mở để backend chạy ngoài Docker (mvnw spring-boot:run) kết nối được khi dev
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      SMS_VERIFY_NUMBER: ${SMS_VERIFY_NUMBER:-}
+      SMS_GATEWAY_TOKEN: ${SMS_GATEWAY_TOKEN:-}
+      SMS_GATEWAY_SIGNING_KEY: ${SMS_GATEWAY_SIGNING_KEY:-}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      SEED_DEMO: ${SEED_DEMO:-false}
+      CLINIC_CODE: ${CLINIC_CODE:-PK001}
+      STORAGE_DIR: /app/data/files
+    ports:
+      - "8080:8080"
+    volumes:
+      - files:/app/data # tệp kết quả xét nghiệm, ảnh chụp
+
+volumes:
+  pgdata:
+  files:

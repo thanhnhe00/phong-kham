@@ -1,0 +1,206 @@
+erDiagram
+  %% Khớp với clinic_booking_postgres.sql (PostgreSQL 16, 48 bảng). Bảng cấu hình (clinic_settings, clinic_closures)
+  %% và audit_logs không vẽ quan hệ cho gọn.
+
+  %% ---- Tài khoản ----
+  USERS ||--o{ USER_ROLES : has
+  USERS ||--o{ PUSH_TOKENS : registers
+  USERS ||--o| EMPLOYEES : employee_account
+  USERS ||--o{ PATIENT_ACCOUNTS : manages
+  USERS ||--o{ NOTIFICATIONS : receives
+  NOTIFICATIONS ||--o{ NOTIFICATION_DELIVERIES : delivered_via
+
+  %% ---- Nhân sự, chuyên khoa, phòng ----
+  EMPLOYEES ||--o{ EMPLOYEE_SPECIALTIES : qualified_for
+  SPECIALTIES ||--o{ EMPLOYEE_SPECIALTIES : includes
+  EMPLOYEES ||--o| DOCTOR_PROFILES : doctor_profile
+  DOCTOR_PROFILES ||--o{ DOCTOR_HISTORY : history
+  SPECIALTIES ||--o{ ROOMS : owns
+  SPECIALTIES }o--|| SERVICES : consultation_fee
+
+  %% ---- Bệnh nhân ----
+  PATIENTS ||--o{ PATIENT_ACCOUNTS : linked_accounts
+  PATIENTS ||--o{ PATIENT_REPRESENTATIVES : represented_by
+  PATIENTS ||--o{ PATIENT_ALLERGIES : has
+
+  %% ---- Lịch bác sĩ ----
+  EMPLOYEES ||--o{ SCHEDULE_TEMPLATES : assigned
+  ROOMS ||--o{ SCHEDULE_TEMPLATES : in_room
+  SCHEDULE_TEMPLATES ||--o{ WORK_SESSIONS : generates
+  EMPLOYEES ||--o{ WORK_SESSIONS : works
+  ROOMS ||--o{ WORK_SESSIONS : hosts
+  WORK_SESSIONS ||--o{ SESSION_CHANGE_REQUESTS : change_requests
+  WORK_SESSIONS ||--o{ APPOINTMENT_SLOTS : has
+
+  %% ---- Lịch hẹn ----
+  APPOINTMENT_SLOTS ||--o{ APPOINTMENTS : booked_in
+  PATIENTS ||--o{ APPOINTMENTS : books
+  APPOINTMENTS ||--o{ APPOINTMENT_SERVICES : pre_registered
+  SERVICES ||--o{ APPOINTMENT_SERVICES : selected
+  APPOINTMENTS ||--o{ APPOINTMENT_CHANGE_REQUESTS : requests
+  APPOINTMENTS ||--o{ CONTACT_LOGS : contacted
+  PATIENTS ||--o{ CONTACT_LOGS : contacted
+  APPOINTMENTS ||--o| APPOINTMENT_QR_TOKENS : issues
+
+  %% ---- Lượt khám (check-in + hàng đợi + trạng thái) ----
+  APPOINTMENTS |o--o| VISITS : becomes
+  PATIENTS ||--o{ VISITS : has
+  WORK_SESSIONS ||--o{ VISITS : queued_in
+  EMPLOYEES ||--o{ VISITS : examines
+  VISITS ||--o{ VISIT_VITALS : vitals
+  VISITS |o--o{ APPOINTMENTS : follow_up
+
+  %% ---- Bệnh án ----
+  VISITS ||--o| EMR_RECORDS : documented_by
+  EMR_RECORDS ||--o{ EMR_DIAGNOSES : diagnoses
+  EMR_RECORDS ||--o{ EMR_AMENDMENTS : amended_by
+
+  %% ---- Chỉ định, kết quả, tệp ----
+  VISITS ||--o{ SERVICE_ORDERS : requests
+  SERVICE_ORDERS ||--o{ SERVICE_ORDER_ITEMS : contains
+  SERVICES ||--o{ SERVICE_ORDER_ITEMS : selected
+  SERVICE_ORDER_ITEMS ||--o{ SERVICE_PERFORMANCES : performed_as
+  SERVICE_PERFORMANCES ||--o| SERVICE_RESULTS : produces
+  SERVICE_RESULTS ||--o{ SERVICE_RESULT_AMENDMENTS : amended_by
+  SERVICE_RESULTS ||--o{ DOCUMENT_FILES : attaches
+  VISITS ||--o{ DOCUMENT_FILES : attaches
+  PATIENTS ||--o{ DOCUMENT_FILES : owns
+
+  %% ---- Đơn thuốc ----
+  VISITS ||--o{ PRESCRIPTIONS : receives
+  PRESCRIPTIONS |o--o| PRESCRIPTIONS : replaces
+  PRESCRIPTIONS ||--o{ PRESCRIPTION_ITEMS : contains
+  MEDICINES ||--o{ PRESCRIPTION_ITEMS : prescribed
+
+  %% ---- Hóa đơn ----
+  VISITS ||--o| INVOICES : billed_by
+  INVOICES ||--o{ INVOICE_ITEMS : contains
+  SERVICE_ORDER_ITEMS ||--o| INVOICE_ITEMS : billed_once
+  INVOICES ||--o{ PAYMENTS : paid_with
+
+  %% ---- Phản hồi ----
+  PATIENTS ||--o{ FEEDBACK : sends
+
+  USERS {
+    bigint id PK
+    varchar phone UK
+    enum status
+    int token_version
+  }
+  USER_ROLES {
+    bigint user_id PK
+    enum role PK
+  }
+  EMPLOYEES {
+    bigint id PK
+    bigint user_id FK
+    varchar employee_code UK
+  }
+  DOCTOR_PROFILES {
+    bigint employee_id PK
+    varchar practice_license_no UK
+    varchar prescriber_code UK
+  }
+  PATIENTS {
+    bigint id PK
+    varchar patient_code UK
+    date date_of_birth
+    enum identity_type
+    varchar identity_number
+  }
+  SCHEDULE_TEMPLATES {
+    bigint id PK
+    bigint doctor_id FK
+    bigint room_id FK
+    smallint weekday
+    enum status
+  }
+  WORK_SESSIONS {
+    bigint id PK
+    bigint doctor_id FK
+    bigint original_doctor_id FK
+    bigint room_id FK
+    timestamptz starts_at
+    timestamptz ends_at
+    enum status
+  }
+  SESSION_CHANGE_REQUESTS {
+    bigint id PK
+    bigint session_id FK
+    enum request_type
+    bigint replacement_doctor_id FK
+    enum status
+  }
+  APPOINTMENT_SLOTS {
+    bigint id PK
+    bigint session_id FK
+    timestamptz slot_start
+    enum status
+  }
+  APPOINTMENTS {
+    bigint id PK
+    bigint patient_id FK
+    bigint slot_id FK
+    enum channel
+    enum status
+  }
+  VISITS {
+    bigint id PK
+    enum source
+    bigint appointment_id FK "NULL khi walk-in"
+    bigint session_id FK
+    bigint doctor_id FK
+    int queue_number
+    enum queue_group
+    enum status
+  }
+  EMR_RECORDS {
+    bigint id PK
+    bigint visit_id FK
+    enum status
+    int version
+    bigint signed_by FK
+  }
+  SERVICE_ORDER_ITEMS {
+    bigint id PK
+    bigint service_id FK
+    numeric unit_price
+    enum status
+  }
+  SERVICE_RESULTS {
+    bigint id PK
+    bigint performance_id FK
+    enum status
+    bigint reviewed_by FK
+  }
+  PRESCRIPTIONS {
+    bigint id PK
+    varchar prescription_code UK
+    bigint visit_id FK
+    bigint replaces_id FK
+    enum status
+  }
+  PRESCRIPTION_ITEMS {
+    bigint id PK
+    bigint medicine_id FK
+    varchar route
+    smallint days
+  }
+  INVOICES {
+    bigint id PK
+    bigint visit_id FK "UNIQUE"
+    numeric total_amount
+    enum status
+  }
+  INVOICE_ITEMS {
+    bigint id PK
+    enum item_type
+    bigint service_order_item_id FK "UNIQUE"
+  }
+  PAYMENTS {
+    bigint id PK
+    bigint invoice_id FK
+    enum kind
+    numeric amount
+    enum status
+  }
