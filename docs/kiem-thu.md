@@ -6,7 +6,7 @@ Tài liệu cho chương 5 của báo cáo: các bộ kiểm thử, cách chạy
 
 | Bộ | Loại | Tệp | Lệnh | Số ca |
 |---|---|---|---|---|
-| Backend | API, tích hợp với PostgreSQL thật (Testcontainers) | `backend/src/test/java/` | `cd backend && ./mvnw test` (cần Docker) | 65 |
+| Backend | API, tích hợp với PostgreSQL thật (Testcontainers) | `backend/src/test/java/` | `cd backend && ./mvnw test` (cần Docker) | 66 |
 | Web nhân viên | Đơn vị | `web/src/lib/logic.test.ts` | `cd web && npm test` | 10 |
 | Web nhân viên | Đầu-cuối, 4 vai trên giao diện | `web/e2e/run.mjs` | `cd web && npm run build && npm run e2e` | 21 bước |
 | Ứng dụng bệnh nhân | Đơn vị | `mobile/src/lib/*.test.ts` | `cd mobile && npm test` | 29 |
@@ -53,6 +53,7 @@ Bệnh nhân thao tác trên app (khổ điện thoại), nhân viên thao tác 
 |---|---|---|
 | `BackendApplicationTests` | 6 | Lỗi trả đúng định dạng tiếng Việt (401, 400, 404); Swagger, kiểm tra sức khỏe công khai |
 | `AuthTest` | 11 | Đăng ký sau khi nhắn tin xác minh; tin từ số khác hoặc cổng SMS giả không xác minh được; chữ ký cổng Android; mỗi phiên xác minh dùng một lần; tối đa 5 lần xin mã/giờ cho một số; khóa đăng nhập sau 5 lần sai; đổi, khôi phục mật khẩu đăng xuất phiên cũ |
+| `MetricsTest` | 1 | Prometheus đọc được số liệu bằng METRICS_TOKEN; không token, token sai, hay đã đăng nhập quản lý đều bị chặn |
 | `RateLimitTest` | 2 | Một IP xin mã cho nhiều số bị chặn ở lần thứ 11 (429, Retry-After), IP khác không ảnh hưởng; dò mật khẩu nhiều tài khoản từ một IP bị chặn |
 | `AccountAdminTest` | 6 | Mật khẩu tạm phải đổi; khóa tài khoản cắt phiên ngay; chỉ quản lý quản trị tài khoản |
 | `CatalogTest` | 9 | Chuyên khoa, dịch vụ, thuốc; trùng mã báo lỗi dễ hiểu; dữ liệu mẫu chạy được |
@@ -83,14 +84,14 @@ Số liệu chi tiết lưu ở `backend/perf/ket-qua.json` sau mỗi lần ch�
 
 | Bộ | Số ca | Đạt | Không đạt |
 |---|---|---|---|
-| Backend | 65 | 65 | 0 |
+| Backend | 66 | 66 | 0 |
 | Web, đơn vị | 10 | 10 | 0 |
 | Web, đầu-cuối | 21 | 21 | 0 |
 | Ứng dụng, đơn vị | 29 | 29 | 0 |
 | Ứng dụng, đầu-cuối | 28 | 28 | 0 |
 | Cả hệ thống | 16 | 16 | 0 |
 | Hiệu năng | 5 | 5 | 0 |
-| **Tổng** | **174** | **174** | **0** |
+| **Tổng** | **175** | **175** | **0** |
 
 Kết quả lần chạy cuối ngày 16/11/2026.
 

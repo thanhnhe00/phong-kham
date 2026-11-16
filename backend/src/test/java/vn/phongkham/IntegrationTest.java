@@ -38,6 +38,7 @@ import vn.phongkham.staff.repository.EmployeeRepository;
         "app.sms.gateway-token=" + IntegrationTest.GATEWAY_TOKEN,
         "app.sms.signing-key=" + IntegrationTest.SIGNING_KEY,
         "app.rate-limit.enabled=false", // mọi request test cùng một IP; chống spam kiểm riêng ở RateLimitTest
+        "app.metrics.token=test-metrics-token",
         "app.seed-demo=false",
         "app.jobs.enabled=false",
         "app.storage.dir=${java.io.tmpdir}/phongkham-test-files"})

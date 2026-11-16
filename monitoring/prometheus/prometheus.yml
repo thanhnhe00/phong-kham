@@ -1,0 +1,20 @@
+# Prometheus hỏi backend mỗi 15 giây, lưu số liệu 15 ngày, đánh giá luật cảnh báo trong alerts.yml.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - alerts.yml
+
+scrape_configs:
+  - job_name: backend
+    metrics_path: /api/actuator/prometheus
+    # token đọc số liệu (METRICS_TOKEN trong .env), Docker gắn vào dưới dạng secret
+    authorization:
+      credentials_file: /run/secrets/metrics_token
+    static_configs:
+      - targets: ["backend:8080"]
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

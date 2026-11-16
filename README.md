@@ -22,13 +22,15 @@ Hướng dẫn chạy và kiểm thử từng phần: [web/README.md](web/README
 ## Chạy toàn bộ bằng Docker
 
 ```bash
-cp .env.example .env                              # sửa JWT_SECRET; SEED_DEMO=true tạo dữ liệu demo
+cp .env.example .env                              # sửa JWT_SECRET, METRICS_TOKEN, GRAFANA_ADMIN_PASSWORD; SEED_DEMO=true tạo dữ liệu demo
 docker compose up -d --build
 curl http://localhost:8080/api/actuator/health   # {"status":"UP"}
 ```
 
+- Web nhân viên: http://localhost:8088 · Grafana (giám sát): http://localhost:3005 · Prometheus: http://localhost:9095
 - Swagger (xem và thử API): http://localhost:8080/api/docs
 - Danh sách API và tài khoản demo: [docs/api.md](docs/api.md). Quản lý demo: `0900000001` / `12345678`.
+- CI/CD (GitHub Actions, tự triển khai lên máy của nhóm qua self-hosted runner) và giám sát: [docs/trien-khai.md](docs/trien-khai.md).
 
 ## Xác minh số điện thoại và chống spam
 
@@ -104,7 +106,7 @@ Số chương và định dạng cuối cùng theo file quy định trình bày 
 | Chương 1: Khảo sát và cơ sở lý thuyết | Quy trình phòng khám thực tế, quy định pháp lý, hệ thống tương tự, công nghệ | `docs/nghien-cuu-nghiep-vu.md` |
 | Chương 2: Phân tích và thiết kế | Tác nhân, use case, quy trình, ERD, thiết kế CSDL, kiến trúc MVC, API, thiết kế giao diện | `docs/dac-ta-nghiep-vu.docx`, `docs/erd.mmd`, migration SQL, `docs/api.md`, `docs/thiet-ke/` |
 | Chương 3: Cài đặt và triển khai | Cấu trúc code, công nghệ, Docker, giao diện từng vai | README các phần, ảnh chụp màn hình từ kiểm thử đầu-cuối |
-| Chương 4: Kiểm thử và kết quả | Ca kiểm thử, kết quả, ảnh chụp | Kiểm thử tự động: backend 65, web 10 + 21 bước, app 29 + 28 bước, cả hệ thống 16 bước (`web/e2e/he-thong.mjs`) |
+| Chương 4: Kiểm thử và kết quả | Ca kiểm thử, kết quả, ảnh chụp | Kiểm thử tự động: backend 66, web 10 + 21 bước, app 29 + 28 bước, cả hệ thống 16 bước (`web/e2e/he-thong.mjs`) |
 | Kết luận và hướng phát triển | Đã làm được, hạn chế (cổng SMS là một điện thoại, cập nhật bằng hỏi lại 15 giây, chưa có BHYT, chưa đẩy thông báo), hướng mở rộng | Mục "giai đoạn sau" trong đặc tả |
 | Tài liệu tham khảo, phụ lục | Văn bản luật, tài liệu kỹ thuật, hướng dẫn cài đặt, tài khoản demo | Nguồn trong `docs/nghien-cuu-nghiep-vu.md`, `docs/api.md` |
 
@@ -117,7 +119,7 @@ Hồ sơ bảo vệ thường gồm: báo cáo (bản in và PDF), slide, mã ng
 | `README.md` | Giới thiệu đề tài, công nghệ, cách chạy, tài khoản demo, cấu trúc | Có. Còn thiếu: tên đề tài chính thức, thành viên nhóm, giảng viên hướng dẫn, tên trường, ảnh chụp màn hình |
 | `.gitignore` | Không đưa `.env`, `node_modules`, `target`, `dist`, ảnh kiểm thử lên Git | Có (gốc, backend, web, mobile) |
 | `.env.example` | Mẫu biến môi trường, không chứa bí mật thật | Có |
-| `docker-compose.yml` | Chạy hệ thống bằng một lệnh | Có (database và backend). Web chưa có trong compose, đang chạy bằng `npm run dev` |
+| `docker-compose.yml` | Chạy hệ thống bằng một lệnh | Có: database, backend, web (nginx), Prometheus, Grafana |
 | `backend/`, `web/`, `mobile/` | Mã nguồn | Xong, mỗi phần có README riêng |
 | `docs/` | Đặc tả, ERD, nghiên cứu nghiệp vụ, danh sách API, thiết kế giao diện app (PDF) | Có |
 | `backend/perf/` | Kịch bản kiểm thử hiệu năng và kết quả | Có |
@@ -128,7 +130,8 @@ Hồ sơ bảo vệ thường gồm: báo cáo (bản in và PDF), slide, mã ng
 | `docs/slide/` | Slide bảo vệ | Chưa có |
 | `CONTRIBUTING.md` | Quy ước làm việc nhóm: nhánh, commit, kiểm thử trước khi gộp | Có |
 | `LICENSE` | Giấy phép mã nguồn | Chưa có. Đồ án thường để MIT, hoặc không đặt nếu trường giữ bản quyền |
-| `.github/workflows/ci.yml` | GitHub tự chạy kiểm thử backend, web, app mỗi lần đẩy code | Có |
+| `.github/workflows/ci.yml`, `cd.yml` | CI: kiểm thử backend, web, app mỗi lần đẩy code. CD: đóng gói image lên ghcr.io, triển khai lên máy chủ qua self-hosted runner | Có. Cần cài runner theo `docs/trien-khai.md` |
+| `monitoring/`, `docs/trien-khai.md` | Prometheus, luật cảnh báo, bảng Grafana; hướng dẫn CI/CD và giám sát | Có |
 
 ### Kiểm tra trước khi đưa lên Git
 

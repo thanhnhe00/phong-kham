@@ -1,0 +1,120 @@
+# CD: sau khi CI trên nhánh main đạt, đóng gói backend và web thành image Docker, đẩy lên GitHub Container Registry
+# (ghcr.io), rồi máy chạy hệ thống (self-hosted runner, hiện là máy tính của nhóm) kéo image mới về và khởi động lại.
+# Cài runner và bật triển khai: xem docs/trien-khai.md.
+name: CD
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch: # chạy tay từ tab Actions (vd. triển khai lại bản đang có)
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: cd-main
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Đóng gói image
+    # chỉ khi CI đạt (hoặc chạy tay)
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - id: meta
+        run: |
+          echo "tag=sha-$(git rev-parse --short=12 HEAD)" >> "$GITHUB_OUTPUT"
+          echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Backend
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: true
+          tags: |
+            ghcr.io/${{ steps.meta.outputs.owner }}/phong-kham-backend:${{ steps.meta.outputs.tag }}
+            ghcr.io/${{ steps.meta.outputs.owner }}/phong-kham-backend:latest
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Web
+        uses: docker/build-push-action@v6
+        with:
+          context: web
+          push: true
+          tags: |
+            ghcr.io/${{ steps.meta.outputs.owner }}/phong-kham-web:${{ steps.meta.outputs.tag }}
+            ghcr.io/${{ steps.meta.outputs.owner }}/phong-kham-web:latest
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+  deploy:
+    name: Triển khai lên máy chủ
+    needs: build
+    # Chỉ chạy khi đã cài runner và bật biến DEPLOY_ENABLED=true (Settings → Secrets and variables → Actions → Variables)
+    if: vars.DEPLOY_ENABLED == 'true'
+    runs-on: [self-hosted, windows]
+    environment: production
+    env:
+      IMAGE_TAG: ${{ needs.build.outputs.tag }}
+      # .env thật (mật khẩu, token) nằm sẵn trên máy chủ, không đưa lên GitHub
+      ENV_FILE: ${{ vars.DEPLOY_ENV_FILE }}
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Đăng nhập ghcr.io
+        # token tự sinh cho mỗi lần chạy, chỉ đủ quyền đọc/ghi package của repo này
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: |
+          $env:GHCR_TOKEN | docker login ghcr.io -u $env:GHCR_USER --password-stdin
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Kéo image mới
+        run: |
+          docker compose --env-file "$env:ENV_FILE" pull backend web
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Khởi động lại (database, giám sát giữ nguyên dữ liệu)
+        run: |
+          docker compose --env-file "$env:ENV_FILE" up -d --no-build --remove-orphans
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Kiểm tra sau triển khai
+        run: |
+          $port = (Select-String -Path $env:ENV_FILE -Pattern '^WEB_PORT=(\d+)' | ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -First 1
+          if (-not $port) { $port = 8088 }
+          for ($i = 0; $i -lt 30; $i++) {
+            try {
+              $r = Invoke-RestMethod "http://localhost:$port/api/actuator/health" -TimeoutSec 5
+              if ($r.status -eq 'UP') { Write-Host "Hệ thống đã chạy bản $env:IMAGE_TAG"; exit 0 }
+            } catch { }
+            Start-Sleep -Seconds 5
+          }
+          docker compose --env-file "$env:ENV_FILE" ps
+          docker compose --env-file "$env:ENV_FILE" logs --tail 80 backend
+          Write-Error "Backend không lên sau 150 giây"
+          exit 1

@@ -2,12 +2,15 @@ package vn.phongkham.config;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -41,7 +44,31 @@ public class SecurityConfig {
         this.jwtKey = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
     }
 
+    /**
+     * Số liệu giám sát chỉ cho Prometheus đọc: header "Authorization: Bearer &lt;METRICS_TOKEN&gt;".
+     * Chưa đặt METRICS_TOKEN thì không ai đọc được.
+     */
     @Bean
+    @Order(1)
+    SecurityFilterChain metricsFilterChain(HttpSecurity http, @Value("${app.metrics.token:}") String metricsToken) throws Exception {
+        byte[] expected = ("Bearer " + metricsToken.trim()).getBytes(StandardCharsets.UTF_8);
+        return http
+                .securityMatcher("/actuator/prometheus")
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth.anyRequest().access((authentication, ctx) -> {
+                    String given = ctx.getRequest().getHeader("Authorization");
+                    return new AuthorizationDecision(!metricsToken.isBlank() && given != null
+                            && MessageDigest.isEqual(expected, given.getBytes(StandardCharsets.UTF_8)));
+                }))
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint(JsonErrorHandlers.UNAUTHORIZED)
+                        .accessDeniedHandler(JsonErrorHandlers.FORBIDDEN))
+                .build();
+    }
+
+    @Bean
+    @Order(2)
     SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthConverter converter) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable()) // API stateless, không dùng cookie phiên
